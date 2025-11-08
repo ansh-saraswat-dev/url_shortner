@@ -1,0 +1,714 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>NeonShort — URL Shortener</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#02286e">
+<link rel="apple-touch-icon" href="/icons/icon-192.png">
+
+<style>
+
+ :root{
+ --bg-1: #02286e;
+ --bg-2: #04410e;
+ --glass: rgba(255,255,255,0.04);
+ --glass-border: rgba(255,255,255,0.06);
+ --muted: rgba(255,255,255,0.66);
+ --muted-strong: rgba(255,255,255,0.94);
+ --accent-start: #00d4ff; /* cyan */
+ --accent-end: #22f3d4;  /* mint-cyan */
+ --danger: #ff6b6b;
+ --radius: 12px;
+ font-family: 'Inter', system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+ -webkit-font-smoothing:antialiased;
+ -moz-osx-font-smoothing:grayscale;
+ }
+
+ /* page background */
+ html,body{height:100%;margin:0}
+ body{
+ background:
+ radial-gradient(900px 360px at 8% 12%, rgba(0,212,255,0.06), transparent),
+ radial-gradient(700px 300px at 92% 88%, rgba(34,243,212,0.03), transparent),
+ linear-gradient(180deg,var(--bg-1),var(--bg-2));
+ color: #eafcff;
+ padding: 86px 20px 28px; /* top padding to fit fixed navbar */
+ display:flex; align-items:flex-start; justify-content:center;
+ min-height:100vh;
+ background-size: 400% 400%;
+ animation: bgShift 20s ease infinite;
+ }
+ @keyframes bgShift {
+ 0% { background-position: 0% 50%;}
+ 50% { background-position: 100% 50%;}
+ 100% { background-position: 0% 50%;}
+ }
+
+/* paste a url size */
+#urlInput{
+ width: 660px;
+}
+
+ /* navbar (fixed) */
+ .navbar {
+ position: fixed;
+ top: 18px;
+ left: 50%;
+ transform: translateX(-50%);
+ width: calc(100% - 40px);
+ max-width: 1400px;
+ z-index: 9999;
+ display:flex; align-items:center; justify-content:space-between;
+ padding:12px 18px;
+ border-radius: 14px;
+ background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+ border: 1px solid var(--glass-border);
+ box-shadow: 0 10px 34px rgba(2,6,23,0.6);
+ backdrop-filter: blur(8px) saturate(120%);
+ }
+ .nav-left { display:flex; align-items:center; gap:12px; }
+ .nav-logo {
+ width:46px; height:46px; border-radius:10px;
+ background: linear-gradient(135deg,var(--accent-start),var(--accent-end));
+ display:flex; align-items:center; justify-content:center; font-weight:800; color:#021;
+ box-shadow: 0 8px 24px rgba(0,212,255,0.08), inset 0 -6px 14px rgba(255,255,255,0.04);
+ font-size:16px;
+ }
+ .nav-title { font-weight:700; font-size:16px; color:var(--muted-strong); }
+ .nav-links { display:flex; gap:18px; align-items:center; }
+ .nav-links button {
+ background:transparent; border:0; color:var(--muted-strong); font-weight:600; cursor:pointer;
+ padding:8px 10px; border-radius:8px;
+ }
+ .nav-links button:hover { color:var(--accent-start); transform:translateY(-2px); }
+ .nav-cta { padding:8px 12px; border-radius:10px; border:0; cursor:pointer; font-weight:700;
+ background: linear-gradient(90deg,var(--accent-start),var(--accent-end)); color:#021; }
+ .nav-cta:hover { transform: translateY(-3px); box-shadow: 0 18px 40px rgba(0,212,255,0.08); }
+
+ /* wrapper */
+ .container {
+ width:100%; max-width:1200px;
+ display:grid; grid-template-columns: 1fr 360px; gap:22px; align-items:start;
+ padding:30px;
+ }
+ @media (max-width: 920px) {
+ .container { grid-template-columns: 1fr; padding:12px; }
+ .navbar { width: calc(100% - 24px); left:12px; transform:none; }
+ }
+
+ /* panels */
+ .panel {
+ background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.008));
+ border: 1px solid var(--glass-border);
+ border-radius:14px;
+ padding:18px;
+ backdrop-filter: blur(8px) saturate(120%);
+ box-shadow: 0 8px 30px rgba(2,6,23,0.55);
+ }
+
+ /* brand */
+ .brand { display:flex; gap:12px; align-items:center; margin-bottom:8px; }
+ .logo { width:56px; height:56px; border-radius:12px; background: linear-gradient(135deg,var(--accent-start),var(--accent-end)); display:flex; align-items:center; justify-content:center; font-weight:800; color:#021; box-shadow: 0 6px 18px rgba(0,212,255,0.10); }
+ h1 { margin:0; font-size:18px; color:var(--muted-strong); }
+ .subtitle { color:var(--muted); font-size:13px; margin-top:6px; }
+
+ /* form */
+ form.shorten { display:flex; gap:12px; align-items:flex-start; width:100%; margin-top:8px; margin-bottom:10px; }
+ .leftForm { flex:1; min-width:0; display:flex; flex-direction:column; gap:8px; }
+ input[type="url"], input[type="text"]{
+ width:100%; padding:12px 14px; border-radius:12px; border:1px solid var(--glass-border);
+ background: linear-gradient(180deg, rgba(255,255,255,0.02), transparent); color:inherit; outline:none; font-size:14px;
+ }
+ .controlsRow { display:flex; gap:8px; align-items:center; justify-content:flex-end; }
+ .primary { padding:10px 14px; border-radius:12px; border:0; cursor:pointer; font-weight:700; background: linear-gradient(90deg,var(--accent-start),var(--accent-end)); color:#021;}
+
+ .small-muted { color:var(--muted); font-size:13px; }
+
+ /* options row */
+ .optionsRow { display:flex; gap:12px; align-items:center; margin-top:8px; flex-wrap:wrap; }
+ .checkbox { display:inline-flex; align-items:center; gap:8px; font-size:13px; color:var(--muted); }
+
+ /* list/cards */
+ .list { display:flex; flex-direction:column; gap:12px; margin-top:12px; max-height:58vh; overflow:auto; padding-right:6px; }
+ .card { display:flex; gap:12px; align-items:center; padding:12px; border-radius:12px; background: linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.006)); border:1px solid var(--glass-border); min-height:72px; }
+ .card:hover { transform: translateY(-6px); transition: all .14s ease; box-shadow: 0 14px 36px rgba(2,6,23,0.45); }
+ .card .left { flex:1; min-width:0; }
+ .orig { color:var(--muted); font-size:13px; margin-bottom:6px; overflow-wrap: anywhere; }
+ .shortRow { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+ .shortLink { font-weight:700; color:#fff; text-decoration:none; word-break:break-all; }
+ .publicShort { font-weight:600; font-size:13px; color:var(--accent-end); margin-left:6px; }
+
+ .meta { display:flex; gap:10px; align-items:center; color:var(--muted); font-size:13px; margin-top:8px; flex-wrap:wrap; }
+ .badge { padding:6px 8px; border-radius:999px; font-size:12px; color:var(--muted); background: rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.02); }
+
+ .btns { display:flex; gap:8px; margin-left:8px; }
+ .btn { padding:8px 10px; border-radius:10px; border:0; cursor:pointer; font-weight:600; font-size:13px; background:transparent; color:var(--muted); }
+ .btn.copy { background: rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.03); }
+ .btn.open { background: linear-gradient(90deg,#0f2340, #0b1a2e); color:#dfefff; }
+ .btn.delete { color:var(--danger); border:1px solid rgba(255,255,255,0.03); }
+
+ /* sidebar */
+ .sidebar { position:sticky; top:120px; align-self:start; height:50vh; }
+ .stats { display:flex; gap:12px; margin-bottom:12px; }
+ .stat { flex:1; padding:12px; border-radius:12px; background: linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.005)); border:1px solid var(--glass-border); text-align:center; }
+ .stat .num { font-weight:800; font-size:20px; color:var(--muted-strong); }
+
+ .actions { display:flex; gap:8px; margin-top:12px; align-items:center; }
+
+ /* pagination */
+ .pagination { display:flex; gap:8px; align-items:center; justify-content:center; margin-top:12px; }
+ .page-btn { padding:8px 10px; border-radius:8px; border:1px solid var(--glass-border); background:transparent; color:var(--muted); cursor:pointer; }
+ .page-btn[disabled] { opacity:0.35; cursor:not-allowed; }
+
+ /* toast */
+ #toast { position: fixed; right: 22px; bottom: 28px; background: linear-gradient(90deg,var(--accent-start),var(--accent-end)); color: #021; padding: 12px 16px; border-radius: 12px; box-shadow: 0 10px 30px rgba(2,6,23,0.6); transform: translateY(12px); opacity: 0; transition: opacity .25s ease, transform .25s ease; z-index: 9999; font-weight:700;}
+ #toast.show { opacity:1; transform: translateY(0); }
+
+ /* modal (shared styles) */
+ .modal-backdrop { position: fixed; inset:0; display:none; align-items:center; justify-content:center; z-index:9998; background: rgba(2,6,23,0.6); padding:20px; }
+ .modal-card { width:100%; max-width:520px; background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); padding:18px; border-radius:12px; border:1px solid var(--glass-border); box-shadow: 0 18px 40px rgba(2,6,23,0.7); display:flex; gap:12px; align-items:center; }
+ .modal-card h3 { margin:0 0 6px 0; color:var(--muted-strong); }
+ .modal-actions { display:flex; gap:8px; margin-top:12px; justify-content:flex-end; }
+
+
+ /* About/Contact modal content */
+ .info-content { text-align:left; color:var(--muted-strong); line-height:1.45; }
+ .info-title { color:var(--accent-end); margin-bottom:6px; }
+
+ /* small responsive tweaks */
+ @media (max-width:640px){
+  .modal-card { flex-direction:column; align-items:center; } }
+
+ /* scrollbar visuals */
+ .list::-webkit-scrollbar{ width:8px } .list::-webkit-scrollbar-thumb{ background: rgba(255,255,255,0.04); border-radius:8px } .list::-webkit-scrollbar-track{ background: transparent }
+
+
+ /* Sticky minimal footer */
+.footer {
+ position: fixed;
+ bottom: 0;
+ left: 0;
+ width: 100%;
+ backdrop-filter: blur(12px);
+ background: #05515c;
+ border-top: 1px solid rgba(0, 0, 0, 0.05);
+ padding: 12px 0;
+ text-align: center;
+ font-family: 'Inter', sans-serif;
+ color: #111;
+ font-size: 0.9rem;
+ z-index: 1000;
+}
+
+.footer p {
+ margin: 0;
+ letter-spacing: 0.3px;
+}
+
+
+
+/* --- New Single Footer Marquee --- */
+
+/* New keyframes to scroll from all the way right to all the way left *//* --- New Ping-Pong Marquee Keyframes --- */
+@keyframes marquee-single {
+ 0% {
+ /* Start at the far left */
+ transform: translateX(0);
+ }
+ 100% {
+ /* Move to the far right.
+      The destination is the viewport width (100vw)
+      minus the text's own width (100%).
+    */
+ transform: translateX(calc(100vw - 100%));
+ }
+}
+
+.footer-marquee-wrapper {
+ /* This makes the wrapper only as wide as the text inside it */
+ display: inline-block;
+ 
+ /* Apply the animation HERE, with 'alternate' for the back-and-forth */
+ animation: marquee-single 15s linear infinite alternate;
+}
+.footer-marquee-container {
+ /* This container just holds the line and hides the overflow */
+ overflow: hidden;
+ width: 100%;
+ padding-bottom: 6px;
+ text-align: left; /* <-- ADD THIS LINE */
+}
+
+.footer-marquee-text {
+ display: inline-block;
+ white-space: nowrap; /* <--- KEEP THIS */
+ 
+ /* ... all your other styles (font-size, color, etc.) ... */
+ font-size: 0.9rem;
+ font-weight: 600;
+ background: linear-gradient(90deg, var(--accent-start), var(--accent-end));
+ background-clip: text;
+ color: transparent; 
+ -webkit-background-clip: text; 
+ -webkit-text-fill-color: transparent; 
+ text-shadow: 0 0 5px rgba(0,212,255,0.1);
+}
+
+input[type="url"]:focus, 
+input[type="text"]:focus {
+  /* Adds a neon box-shadow matching your accent color */
+  box-shadow: 0 0 12px 2px rgba(0, 212, 255, 0.4);
+  border-color: var(--accent-start);
+}
+/* For your main CTA button */
+.primary:active {
+  transform: translateY(-1px) scale(0.98);
+  box-shadow: 0 4px 10px rgba(0,212,255,0.15);
+}
+
+/* For your smaller card buttons */
+.btn:active {
+  transform: scale(0.96);
+}
+</style>
+</head>
+<body>
+
+ <header class="navbar" role="navigation" aria-label="Main navigation">
+<div class="nav-left">
+<div class="nav-logo" aria-hidden="true">NS</div>
+ <div>
+ <div class="nav-title">NeonShort</div>
+ <div style="font-size:12px;color:var(--muted)">Fast • private • client-side</div>
+</div>
+</div>
+
+<div style="display:flex; align-items:center; gap:16px;">
+ <nav class="nav-links" aria-label="Primary">
+ <button id="navHome" type="button">Home</button>
+<button id="navAbout" type="button">About Us</button>
+<button id="navContact" type="button">Contact Us</button>
+</nav>
+</div>
+</header>
+
+ <main class="container" role="main" aria-label="NeonShort App">
+
+ <section class="panel" aria-labelledby="appTitle">
+ 
+<div style="display:flex; flex-direction:column; gap:8px;">
+ <form class="shorten" id="shortenForm" onsubmit="return false;" aria-label="Shorten a URL form">
+ <div class="leftForm">
+<label class="small-muted" for="urlInput">Paste a URL</label>
+ <input id="urlInput" type="url" placeholder="https://example.com/some/long/path" aria-label="URL input" />
+ <div style="display:flex; gap:8px; align-items:center;">
+<input id="aliasInput" type="text" placeholder="Custom alias (optional) — e.g. my-project" style="width:260px" aria-label="Alias input" />
+ <div class="controlsRow"><button id="shortenBtn" class="primary" type="button">Shorten</button></div>
+ </div>
+</div>
+ </form>
+
+ <div style="display:flex; gap:12px; margin-top:12px;">
+ <input id="domainInput" type="text" placeholder="Base domain (for display) — e.g. short.ly (optional)" style="flex:1; padding:10px; border-radius:10px; border:1px solid var(--glass-border); background:transparent; color:inherit" />
+<button id="clearBtn" class="btn" type="button" title="Clear all">Clear All</button>
+ </div>
+
+ <div class="list" id="linksList" aria-live="polite" style="margin-top:16px;">
+ </div>
+ <div class="pagination" id="pagination" aria-hidden="true" style="display:none;"> <button class="page-btn" id="prevPage">Prev</button> <div id="pageInfo" class="small-muted" style="min-width:200px; text-align:center"></div><button class="page-btn" id="nextPage">Next</button> </div> </div>
+ </section>
+
+ <aside class="panel sidebar" aria-labelledby="dashboardTitle">
+ <h3 id="dashboardTitle">Dashboard</h3>
+ <div class="stats" role="group" aria-label="Stats summary">
+ <div class="stat">
+ <div class="num" id="totalShorts">0</div>
+ <div class="small-muted">Shortened</div>
+ </div>
+ <div class="stat">
+ <div class="num" id="totalClicks">0</div>
+ <div class="small-muted">Clicks</div>
+ </div>
+ </div>
+
+ <div style="margin-bottom:12px;">
+ <br>
+ <div class="small-muted">Tip</div>
+ <div class="small-muted" style="margin-top:6px">Export/import your links or sort.</div>
+ </div>
+ <div style="display:flex; gap:8px; margin-bottom:8px;">
+ <button id="exportBtn" class="primary" style="flex:1;">Export JSON</button>
+ <button id="importBtn" class="btn" style="flex:1;">Import</button>
+ </div>
+
+ <div>
+ <br>
+ <label class="small-muted">Quick actions</label>
+ <div style="display:flex; gap:8px; margin-top:8px;">
+ <button id="sortNewest" class="btn">Sort: Newest</button>
+ <button id="sortMostClicks" class="btn">Sort: Top Clicks</button>
+ </div>
+ </div>
+
+ </aside>
+ </main>
+
+ <div id="toast" role="status" aria-live="polite"></div>
+
+ <div id="aboutModal" class="modal-backdrop" aria-hidden="true" role="dialog" aria-modal="true">
+ <div class="modal-card" role="document" style="flex-direction:column; text-align:left;">
+ <h3 class="info-title">About Us</h3>
+ <div class="info-content">
+<p>NeonShort is a simple and efficient URL shortener built as a college project to demonstrate full-stack web development skills. It allows users to convert long, complex URLs into short, shareable links.
+
+ The project focuses on usability, performance, and clean design. It uses modern web technologies for both front-end and back-end development, ensuring fast link generation and reliable redirection.
+ 
+ Our goal is to make link sharing easy, secure, and accessible for everyone</p>
+ </div>
+ <div class="modal-actions" style="margin-top:12px;">
+ <button class="primary" onclick="closeModal('aboutModal')">Close</button>
+ </div>
+ </div>
+ </div>
+ <div id="contactModal" class="modal-backdrop" aria-hidden="true" role="dialog" aria-modal="true">
+ <div class="modal-card" role="document" style="flex-direction:column; text-align:left;">
+ <h3 class="info-title">Contact Us</h3>
+ <h3 class="info-title">We're here to help! If you have any queries, feedback, or collaboration ideas, reach out to us.</h3>
+ <div class="info-content">
+ <p>Email: <a href="mailto:anshsarawat000@gmail.com" style="color:var(--accent-start); text-decoration:none;">anshsarawat000@gmail.com</a></p>
+ <p>Mobile: <a href="tel:+918865098108" style="color:var(--accent-start); text-decoration:none;">8865098108</a></p>
+
+ </div>
+ <h3 class="info-title">We'll get back to you as soon as possible</h3>
+ <div class="modal-actions" style="margin-top:12px;">
+ <button class="primary" onclick="closeModal('contactModal')">Close</button>
+ </div>
+ </div>
+ </div>
+
+<script>
+/* ---------- App logic (fully functional) ---------- */
+const STORAGE_KEY = 'neonshort_links_v_final';
+const PAGE_SIZE = 10;
+const AUTO_BASE = (location.protocol && location.protocol.startsWith('http')) ? `${location.protocol}//${location.host}/` : 'https://short.ly/';
+let BASE = AUTO_BASE;
+
+/* DOM */
+const urlInput = document.getElementById('urlInput');
+const aliasInput = document.getElementById('aliasInput');
+const shortenBtn = document.getElementById('shortenBtn');
+const linksList = document.getElementById('linksList');
+const totalShorts = document.getElementById('totalShorts');
+const totalClicks = document.getElementById('totalClicks');
+const domainInput = document.getElementById('domainInput');
+const clearBtn = document.getElementById('clearBtn');
+const exportBtn = document.getElementById('exportBtn');
+const importBtn = document.getElementById('importBtn');
+const sortNewest = document.getElementById('sortNewest');
+const sortMostClicks = document.getElementById('sortMostClicks');
+
+const toastEl = document.getElementById('toast');
+
+const prevPageBtn = document.getElementById('prevPage');
+const nextPageBtn = document.getElementById('nextPage');
+const pageInfo = document.getElementById('pageInfo');
+const paginationWrap = document.getElementById('pagination');
+
+const navHome = document.getElementById('navHome');
+const navAbout = document.getElementById('navAbout');
+const navContact = document.getElementById('navContact');
+const navDemo = document.getElementById('navDemo');
+
+const aboutModal = document.getElementById('aboutModal');
+const contactModal = document.getElementById('contactModal');
+
+let links = loadLinks();
+let currentPage = 1;
+
+/* Storage */
+function loadLinks(){
+ try {
+ const raw = localStorage.getItem(STORAGE_KEY);
+ if (!raw) return [];
+ const parsed = JSON.parse(raw);
+ if (!Array.isArray(parsed)) return [];
+ return parsed;
+ } catch(e){ console.error('load failed',e); return []; }
+}
+function saveLinks(){
+ localStorage.setItem(STORAGE_KEY, JSON.stringify(links));
+}
+function updateStats(){
+ totalShorts.textContent = links.length;
+ const clicks = links.reduce((s,l)=> s + (l.clicks||0), 0);
+ totalClicks.textContent = clicks;
+}
+
+/* utils */
+function randCode(len=6){ const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'; let s=''; for(let i=0;i<len;i++) s+=chars[Math.floor(Math.random()*chars.length)]; return s; }
+function validateURL(u){
+ try {
+ if (!/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(u)) u = 'https://' + u;
+ const parsed = new URL(u);
+ if (!parsed.hostname) return null;
+ return parsed.href;
+ } catch(e){ return null; }
+}
+function makeUniqueAlias(base){
+ let alias = base; let attempt = 0;
+ while(links.some(l => l.alias === alias) && attempt < 10000){
+ attempt++; alias = base + '-' + randCode(2);
+ }
+ return alias;
+}
+
+/* pagination */
+function totalPages(){ return Math.max(1, Math.ceil(links.length / PAGE_SIZE)); }
+function clampPage(p){ const tp = totalPages(); if (p < 1) return 1; if (p > tp) return tp; return p; }
+
+/* create short */
+async function createShort(original, desiredAlias = ''){
+ const normalized = validateURL(original);
+ if (!normalized) return { error: 'Invalid URL' };
+
+ let alias = '';
+ if (desiredAlias && desiredAlias.trim()){
+ alias = desiredAlias.trim();
+ if (!/^[A-Za-z0-9_-]+$/.test(alias)) return { error: 'Alias can only contain letters, numbers, - and _' };
+ if (links.some(l=>l.alias.toLowerCase() === alias.toLowerCase())) return { error: 'Alias already taken' };
+ } else {
+ alias = makeUniqueAlias(randCode(6));
+ }
+
+ const now = new Date().toISOString();
+ const entry = { id: Date.now() + '-' + randCode(4), original: normalized, alias, createdAt: now, clicks:0, publicShort:null };
+
+
+ links.unshift(entry);
+ saveLinks();
+ currentPage = 1;
+ renderList();
+ return { entry };
+}
+
+/* render */
+function renderList(){
+ domainInput.value = BASE.replace(/^https?:\/\//,'').replace(/\/$/,'');
+ linksList.innerHTML = '';
+ updateStats();
+
+ if (links.length === 0){
+ const empty = document.createElement('div'); empty.className = 'card';
+ empty.innerHTML = '<div style="flex:1"><div class="orig">No links yet — shorten one above.</div><div class="small-muted" style="margin-top:8px">Your links are stored locally in this browser.</div></div>';
+ linksList.appendChild(empty);
+ paginationWrap.style.display = 'none';
+ return;
+ }
+
+ currentPage = clampPage(currentPage);
+ const start = (currentPage - 1) * PAGE_SIZE;
+ const pageItems = links.slice(start, start + PAGE_SIZE);
+
+ for (const l of pageItems){
+ const card = document.createElement('div'); card.className = 'card';
+ const left = document.createElement('div'); left.className = 'left';
+ const orig = document.createElement('div'); orig.className = 'orig'; orig.title = l.original; orig.textContent = l.original;
+
+ const shortRow = document.createElement('div'); shortRow.className = 'shortRow';
+ const a = document.createElement('a'); a.className = 'shortLink'; a.href = '#'; a.textContent = (BASE + l.alias).replace(/^https?:\/\//,'');
+ a.addEventListener('click', (ev)=>{ ev.preventDefault(); window.open(l.original, '_blank', 'noopener'); l.clicks = (l.clicks || 0) + 1; saveLinks(); updateStats(); renderList(); });
+
+ shortRow.appendChild(a);
+ if (l.publicShort) {
+ const pub = document.createElement('span'); pub.className = 'publicShort'; pub.textContent = l.publicShort; shortRow.appendChild(pub);
+ }
+
+ const meta = document.createElement('div'); meta.className = 'meta';
+ const badge = document.createElement('div'); badge.className = 'badge'; badge.textContent = timeAgo(l.createdAt);
+ const clicks = document.createElement('div'); clicks.className = 'small-muted'; clicks.textContent = `${l.clicks||0} clicks`;
+ meta.appendChild(badge); meta.appendChild(clicks);
+
+ left.appendChild(orig); left.appendChild(shortRow); left.appendChild(meta);
+
+ const btns = document.createElement('div'); btns.className = 'btns';
+ const copyBtn = document.createElement('button'); copyBtn.className = 'btn copy'; copyBtn.textContent = 'Copy';
+copyBtn.addEventListener('click', async ()=> {
+// We don't need the shortUrl variable here anymore. We'll directly use l.original.
+try { await navigator.clipboard.writeText(l.original); copyBtn.textContent = 'Copied'; showToast('Original link copied!'); setTimeout(()=>copyBtn.textContent = 'Copy', 1400); }
+catch(e){ fallbackCopy(l.original); }
+});
+
+ const openBtn = document.createElement('button'); openBtn.className = 'btn open'; openBtn.textContent = 'Open';
+ openBtn.addEventListener('click', ()=>{ const target = l.publicShort || l.original; window.open(target, '_blank', 'noopener'); l.clicks = (l.clicks || 0) + 1; saveLinks(); updateStats(); renderList(); });
+
+ const delBtn = document.createElement('button'); delBtn.className = 'btn delete'; delBtn.textContent = 'Delete';
+ delBtn.addEventListener('click', ()=>{ if (!confirm('Delete this short link?')) return; links = links.filter(x => x.id !== l.id); saveLinks(); if ((currentPage - 1) * PAGE_SIZE >= links.length && currentPage > 1) currentPage--; renderList(); updateStats(); });
+
+ btns.appendChild(copyBtn); btns.appendChild(openBtn); btns.appendChild(delBtn);
+
+ card.appendChild(left); card.appendChild(btns);
+ linksList.appendChild(card);
+ }
+
+ const tp = totalPages();
+ if (tp <= 1) paginationWrap.style.display = 'none';
+ else {
+ paginationWrap.style.display = 'flex';
+ pageInfo.textContent = `Page ${currentPage} of ${tp} — showing ${Math.min(PAGE_SIZE, links.length - (currentPage-1)*PAGE_SIZE)} of ${links.length}`;
+ prevPageBtn.disabled = (currentPage === 1);
+ nextPageBtn.disabled = (currentPage === tp);
+ }
+}
+
+/* time ago */
+function timeAgo(iso){
+ const d = new Date(iso); const now = new Date(); const sec = Math.floor((now - d) / 1000);
+ if (sec < 60) return `${sec}s`; const min = Math.floor(sec/60); if (min < 60) return `${min}m`; const hr = Math.floor(min/60); if (hr < 24) return `${hr}h`; const days = Math.floor(hr/24); if (days < 30) return `${days}d`; return d.toLocaleDateString();
+}
+
+/* UI bindings */
+shortenBtn.addEventListener('click', async ()=>{
+ const url = urlInput.value.trim(); const alias = aliasInput.value.trim();
+ shortenBtn.disabled = true; shortenBtn.textContent = 'Shortening...';
+ try {
+ const res = await createShort(url, alias);
+ if (res.error) { alert(res.error); }
+ else {
+ urlInput.value = ''; aliasInput.value = '';
+ const created = res.entry;
+ const shortUrl = created.publicShort || (BASE + created.alias);
+ try { await navigator.clipboard.writeText(shortUrl); showToast('Short link created & copied!'); } catch(e){ showToast('Short link created'); }
+ }
+ } finally {
+ shortenBtn.disabled = false; shortenBtn.textContent = 'Shorten';
+ }
+});
+
+domainInput.addEventListener('input', (e)=>{
+ const v = e.target.value.trim();
+ if (!v) { BASE = AUTO_BASE; }
+ else {
+ let candidate = v;
+ if (!/^[a-zA-Z]+:\/\//.test(candidate)) candidate = 'https://' + candidate;
+ try { const u = new URL(candidate); BASE = u.origin + '/'; } catch(err) { BASE = 'https://' + v.replace(/\/+$/,'') + '/'; }
+}
+ renderList();
+});
+
+clearBtn.addEventListener('click', ()=> {
+ if (!confirm('Clear all saved short links? This cannot be undone.')) return;
+ links = []; saveLinks(); currentPage = 1; renderList(); updateStats();
+});
+
+exportBtn.addEventListener('click', ()=>{
+ const data = JSON.stringify(links, null, 2);
+ const blob = new Blob([data], { type: 'application/json' });
+ const url = URL.createObjectURL(blob);
+const a = document.createElement('a'); a.href = url; a.download = 'neonshort-links.json'; a.click(); URL.revokeObjectURL(url);
+});
+
+importBtn.addEventListener('click', ()=>{
+ const input = document.createElement('input'); input.type = 'file'; input.accept = '.json,application/json';
+ input.onchange = (ev)=> {
+ const file = ev.target.files[0]; if (!file) return;
+ const reader = new FileReader();
+ reader.onload = ()=> {
+ try {
+ const data = JSON.parse(reader.result);
+ if (!Array.isArray(data)) throw new Error('Invalid file');
+ const existingAliases = new Set(links.map(l=>l.alias.toLowerCase()));
+ const toAdd = data.filter(d => d && d.alias && !existingAliases.has(d.alias.toLowerCase()));
+ links = [...toAdd, ...links]; saveLinks(); renderList(); showToast(`Imported ${toAdd.length} new links`);
+ } catch(e) {
+ showToast('Could not import file', true);
+}
+ };
+ reader.readAsText(file);
+ };
+ input.click();
+});
+
+sortNewest.addEventListener('click', ()=>{ links.sort((a,b)=> new Date(b.createdAt) - new Date(a.createdAt)); currentPage=1; renderList(); });
+sortMostClicks.addEventListener('click', ()=>{ links.sort((a,b)=> (b.clicks||0) - (a.clicks||0)); currentPage=1; renderList(); });
+
+prevPageBtn && prevPageBtn.addEventListener('click', ()=>{ if (currentPage > 1) { currentPage--; renderList(); }});
+nextPageBtn && nextPageBtn.addEventListener('click', ()=>{ if (currentPage < totalPages()) { currentPage++; renderList(); }});
+
+/* toast */
+let toastTimer = null;
+function showToast(message, isError = false, duration = 2200){
+ toastEl.textContent = message;
+ if (isError) { toastEl.style.background = 'linear-gradient(90deg,#ff7a7a,#ffb3b3)'; toastEl.style.color = '#2a0505'; }
+ else { toastEl.style.background = 'linear-gradient(90deg,var(--accent-start),var(--accent-end))'; toastEl.style.color = '#021'; }
+ toastEl.classList.add('show');
+ if (toastTimer) clearTimeout(toastTimer);
+ toastTimer = setTimeout(()=> { toastEl.classList.remove('show'); toastTimer = null; }, duration);
+}
+
+/* fallback copy */
+function fallbackCopy(text){
+ const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select();
+ try { document.execCommand('copy'); showToast('Link copied!'); } catch(e){ showToast('Copy failed', true); }
+ ta.remove();
+}
+
+/* keyboard shortcuts */
+urlInput.addEventListener('keydown', (e)=>{ if (e.key === 'Enter') { shortenBtn.click(); e.preventDefault(); }});
+aliasInput.addEventListener('keydown', (e)=>{ if (e.key === 'Enter') { shortenBtn.click(); e.preventDefault(); }});
+
+/* Simple nav handlers + modals */
+navHome.addEventListener('click', ()=> window.scrollTo({ top: 0, behavior: 'smooth' }));
+navAbout.addEventListener('click', ()=> openModal('aboutModal'));
+navContact.addEventListener('click', ()=> openModal('contactModal'));
+navDemo.addEventListener('click', ()=> openModal('loginModal'));
+
+function openModal(id){ document.getElementById(id).style.display = 'flex'; document.getElementById(id).setAttribute('aria-hidden','false'); }
+function closeModal(id){ document.getElementById(id).style.display = 'none'; document.getElementById(id).setAttribute('aria-hidden','true'); }
+
+/* login modal */
+loginCancel.addEventListener('click', ()=> closeModal('loginModal'));
+loginSubmit.addEventListener('click', ()=> {
+ const email = document.getElementById('loginEmail').value.trim(); const pass = document.getElementById('loginPass').value;
+ if (!email || !pass) { alert('Enter demo credentials'); return; }
+ showToast('Demo login — welcome!', false);
+ closeModal('loginModal');
+});
+
+/* allow clicking outside modal to close */
+window.onclick = function(e){
+ const targets = ['aboutModal','contactModal','loginModal'];
+ if (e.target && e.target.classList && e.target.classList.contains('modal-backdrop')) {
+ e.target.style.display = 'none';
+ e.target.setAttribute('aria-hidden','true');
+ }
+};
+
+/* initial render */
+document.addEventListener('DOMContentLoaded', ()=>{ domainInput.value = BASE.replace(/^https?:\/\//,'').replace(/\/$/,''); renderList(); });
+
+</script>
+
+<footer class="footer">
+  <div class="footer-marquee-container">
+    <div class="footer-marquee-wrapper">
+      <span class="footer-marquee-text">
+        Experience it live on the web, or click the Install button in your browser's toolbar to download it for lifetime free access.
+      </span>
+      
+    </div>
+  </div>
+  <p>Made with ❤️ and 🍵</p>
+</footer>
+<script>
+ if ('serviceWorker' in navigator) {
+ navigator.serviceWorker.register('/service-worker.js')
+ .then(() => console.log('✅ Service Worker Registered'))
+ .catch(err => console.log('Service Worker failed:', err));
+ }
+ </script> 
+</body>
+</html>
